@@ -40,8 +40,10 @@ def get_geos_install_prefix():
     for prefix in candidates:
         libfiles = []
         libdirs = ["bin", "lib", "lib64"]
-        libext = "dll" if os.name == "nt" else "so"
-        libcode = "{0}geos_c".format("" if os.name == "nt" else "lib")
+        libext = "dll" if os.name == "nt" or sys.platform == "cygwin" else "so"
+        libcode = "{0}geos_c".format(
+            "" if os.name == "nt" else "cyg" if sys.platform == "cygwin" else "lib"
+        )
         libname = "{0}*.{1}*".format(libcode, libext)
         for libdir in libdirs:
             libfiles.extend(glob.glob(os.path.join(prefix, libdir, libname)))
@@ -103,7 +105,7 @@ if geos_install_prefix is not None:
     library_dirs.append(os.path.join(geos_install_prefix, "lib"))
     library_dirs.append(os.path.join(geos_install_prefix, "lib64"))
     runtime_library_dirs = library_dirs
-    if os.name == "nt":
+    if os.name == "nt" or sys.platform == "cygwin":
         # On Windows:
         # - DLLs get installed under `bin`.
         # - We need to inject later the DLL in the wheel using `data_files`.
@@ -111,7 +113,11 @@ if geos_install_prefix is not None:
         #   `distutils` bug (http://bugs.python.org/issue2437).
         library_dirs.append(os.path.join(geos_install_prefix, "bin"))
         runtime_library_dirs = []
-        dlls = glob.glob(os.path.join(geos_install_prefix, "*", "geos_c.dll"))
+        dlls = glob.glob(os.path.join(
+            geos_install_prefix,
+            "*",
+            "{:s}geos_c*.dll".format("cyg" if sys.platform == "cygwin" else "")
+        ))
         if dlls:
             data_files.append(("../..", sorted(dlls)))
 
